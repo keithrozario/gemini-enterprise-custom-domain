@@ -5,7 +5,7 @@ region     = "us-central1"
 # Custom domain for your GE / Agentspace app
 custom_domain = "ge.krozario.demo.altostrat.com"
 
-# Project name that contains your Cloud DNS to set the DNS entries and retrieve the certificates
+# Project name that contains your Cloud DNS to set the DNS entries and setup the certificates
 dns_project_name = "dns-krozario"
 dns_zone_name    = "krozario-demo-argolis"
 
