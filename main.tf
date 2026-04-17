@@ -16,20 +16,26 @@ terraform {
 }
 
 provider "google" {
-  region  = "us-central1"
-  project = "agentspace-krozario" # project ID not the name
+  region  = var.region
+  project = var.project_id
+}
+
+locals {
+  source_parts = split(".", var.custom_domain)
+  sub_domain   = local.source_parts[0]
+  base_domain  = join(".", slice(local.source_parts, 1, length(local.source_parts)))
 }
 
 module "tf_domain_and_tls" {
   version          = "0.1.3"
   source           = "keithrozario/domain-tls/google"
-  sub_domain       = "ge"
+  sub_domain       = local.sub_domain
   rrdatas          = [google_compute_global_address.external_ip.address]
   record_type      = "A"
-  base_domain      = "krozario.demo.altostrat.com"
-  dns_project_name = "dns-krozario"
-  dns_zone_name    = "krozario-demo-argolis"
-  region           = "us-central1"
+  base_domain      = local.base_domain
+  dns_project_name = var.dns_project_name
+  dns_zone_name    = var.dns_zone_name
+  region           = var.region
 }
 
 
@@ -49,7 +55,7 @@ output "global_lb_ipv4" {
 }
 
 
-# Internet NEG to proxy to vertexaisearch.cloud.google.com
+# Internet NEG to proxy to target_fqdn
 resource "google_compute_global_network_endpoint_group" "agentspace_ineg" {
   name                  = "agentspace-ineg"
   network_endpoint_type = "INTERNET_FQDN_PORT"
@@ -57,7 +63,7 @@ resource "google_compute_global_network_endpoint_group" "agentspace_ineg" {
 
 resource "google_compute_global_network_endpoint" "vertex_search_endpoint" {
   global_network_endpoint_group = google_compute_global_network_endpoint_group.agentspace_ineg.name
-  fqdn                          = "vertexaisearch.cloud.google.com"
+  fqdn                          = var.target_fqdn
   port                          = 443
 }
 
@@ -80,7 +86,7 @@ resource "google_compute_url_map" "agentspace_lb" {
   default_service = google_compute_backend_service.agentspace_ineg_bes.id
 
   host_rule {
-    hosts        = ["ge.krozario.demo.altostrat.com"]
+    hosts        = [var.custom_domain]
     path_matcher = "agentspace-path-matcher"
   }
 
@@ -96,8 +102,8 @@ resource "google_compute_url_map" "agentspace_lb" {
       service = google_compute_backend_service.agentspace_ineg_bes.id
       route_action {
         url_rewrite {
-          path_prefix_rewrite = "/home/cid/312abbc4-bc6f-4d8e-9d4f-e6650cbe9761"
-          host_rewrite        = "vertexaisearch.cloud.google.com"
+          path_prefix_rewrite = var.agentspace_app_path
+          host_rewrite        = var.target_fqdn
         }
       }
     }
@@ -110,8 +116,8 @@ resource "google_compute_url_map" "agentspace_lb" {
       service = google_compute_backend_service.agentspace_ineg_bes.id
       route_action {
         url_rewrite {
-          path_prefix_rewrite = "/home/cid/312abbc4-bc6f-4d8e-9d4f-e6650cbe9761"
-          host_rewrite        = "vertexaisearch.cloud.google.com"
+          path_prefix_rewrite = var.agentspace_app_path
+          host_rewrite        = var.target_fqdn
         }
       }
     }
@@ -124,8 +130,8 @@ resource "google_compute_url_map" "agentspace_lb" {
       service = google_compute_backend_service.agentspace_ineg_bes.id
       route_action {
         url_rewrite {
-          path_prefix_rewrite = "/home/cid/312abbc4-bc6f-4d8e-9d4f-e6650cbe9761"
-          host_rewrite        = "vertexaisearch.cloud.google.com"
+          path_prefix_rewrite = var.agentspace_app_path
+          host_rewrite        = var.target_fqdn
         }
       }
     }
