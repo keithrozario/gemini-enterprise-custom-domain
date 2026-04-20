@@ -67,6 +67,20 @@ resource "google_compute_global_network_endpoint" "vertex_search_endpoint" {
   port                          = 443
 }
 
+resource "google_compute_global_network_endpoint_group" "keithrozario_com_ineg" {
+  name                  = "keithrozario-com-ineg"
+  network_endpoint_type = "INTERNET_FQDN_PORT"
+}
+
+
+resource "google_compute_global_network_endpoint" "keithrozario_com_endpoint" {
+  global_network_endpoint_group = google_compute_global_network_endpoint_group.keithrozario_com_ineg.name
+  fqdn                          = "www.keithrozario.com"
+  port                          = 443
+}
+
+
+
 # Backend Service for the Internet NEG
 resource "google_compute_backend_service" "agentspace_ineg_bes" {
   name                  = "agentspace-ineg-bes"
@@ -79,6 +93,22 @@ resource "google_compute_backend_service" "agentspace_ineg_bes" {
 
   custom_response_headers = ["Strict-Transport-Security: max-age=31536000; includeSubDomains; preload"]
 }
+
+resource "google_compute_backend_service" "keithrozario_com_ineg_bes" {
+  name                  = "keithrozario-com-ineg-bes"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  protocol              = "HTTPS"
+
+  backend {
+    group = google_compute_global_network_endpoint_group.keithrozario_com_ineg.id
+  }
+
+  custom_response_headers = ["Strict-Transport-Security: max-age=31536000; includeSubDomains; preload"]
+}
+
+
+
+
 
 # URL Map with Rewrite according to Codelab method
 resource "google_compute_url_map" "agentspace_lb" {
@@ -125,6 +155,20 @@ resource "google_compute_url_map" "agentspace_lb" {
     route_rules {
       priority = 3
       match_rules {
+        prefix_match = "/keith"
+      }
+      service = google_compute_backend_service.keithrozario_com_ineg_bes.id
+      route_action {
+        url_rewrite {
+          host_rewrite = "www.keithrozario.com"
+        }
+      }
+    }
+
+
+    route_rules {
+      priority = 4
+      match_rules {
         prefix_match = "/"
       }
       service = google_compute_backend_service.agentspace_ineg_bes.id
@@ -135,6 +179,8 @@ resource "google_compute_url_map" "agentspace_lb" {
         }
       }
     }
+
+
   }
 }
 
